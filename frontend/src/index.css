@@ -1,0 +1,82 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Definition of the design system. All colors, gradients, fonts, etc should be defined here. 
+All colors MUST be HSL.
+*/
+
+@layer base {
+  :root {
+    /* Dark theme base colors */
+    --background: 0 0% 4%;
+    --foreground: 0 0% 90%;
+
+    /* Card with glassmorphism */
+    --card: 0 0% 10%;
+    --card-foreground: 0 0% 90%;
+
+    /* Popover */
+    --popover: 0 0% 8%;
+    --popover-foreground: 0 0% 90%;
+
+    /* Neon red primary */
+    --primary: 348 100% 59%;
+    --primary-foreground: 0 0% 96%;
+
+    /* Neon white secondary */
+    --secondary: 0 0% 18%;
+    --secondary-foreground: 0 0% 96%;
+
+    /* Muted backgrounds */
+    --muted: 0 0% 12%;
+    --muted-foreground: 0 0% 65%;
+
+    /* Accent (neon white glow) */
+    --accent: 0 0% 96%;
+    --accent-foreground: 0 0% 4%;
+
+    /* Destructive */
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 0 0% 98%;
+
+    /* Borders and inputs with subtle glow */
+    --border: 0 0% 20%;
+    --input: 0 0% 15%;
+    --ring: 348 100% 59%;
+
+    --radius: 1rem;
+
+    /* Custom game colors */
+    --white-indicator: 0 0% 96%;
+    --red-indicator: 348 100% 59%;
+    --glow-white: 0 0% 100%;
+    --glow-red: 348 100% 70%;
+    
+    /* Glassmorphism */
+    --glass-bg: 0 0% 10% / 0.6;
+    --glass-border: 0 0% 30% / 0.2;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground;
+  }
+
+  @keyframes fadeBubble {
+  0% { opacity: 0; transform: translateY(10px); }
+  10% { opacity: 1; transform: translateY(0px); }
+  80% { opacity: 1; }
+  100% { opacity: 0; transform: translateY(-10px); }
+}
+
+.animate-fade-bubble {
+  animation: fadeBubble 1.5s ease forwards;
+}
+
+}
