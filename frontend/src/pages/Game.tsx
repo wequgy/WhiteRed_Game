@@ -1,5 +1,3 @@
-// src/pages/Game.tsx
-
 import { useEffect, useState, useRef } from "react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -22,9 +20,6 @@ const Game = () => {
     return null;
   }
 
-  // --------------------------------------------------
-  // NAME ENTRY
-  // --------------------------------------------------
   const storedName = localStorage.getItem("wr-name") || "";
   const [askNameOpen, setAskNameOpen] = useState(!storedName);
   const [tempName, setTempName] = useState("");
@@ -32,10 +27,8 @@ const Game = () => {
   const [opponentName, setOpponentName] = useState("Opponent");
 
   const [myId, setMyId] = useState("");
+  const [hostId, setHostId] = useState(""); // NEW
 
-  // --------------------------------------------------
-  // GAME STATE
-  // --------------------------------------------------
   const [gameStarted, setGameStarted] = useState(false);
   const [status, setStatus] = useState("Waiting for players…");
 
@@ -45,32 +38,21 @@ const Game = () => {
   const [turn, setTurn] = useState<string | null>(null);
   const [loadingState, setLoadingState] = useState<null | "joining" | "locking">(null);
 
-  // --------------------------------------------------
-  // HISTORY
-  // --------------------------------------------------
   const [history, setHistory] = useState<any[]>([]);
 
-  // --------------------------------------------------
-  // CHAT
-  // --------------------------------------------------
   const [chat, setChat] = useState<any[]>([]);
   const [chatInput, setChatInput] = useState("");
   const [chatOpen, setChatOpen] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
   const [opponentTyping, setOpponentTyping] = useState(false);
 
-  // NOTIFICATION
   const [notifyOpen, setNotifyOpen] = useState(false);
   const [notifyMsg, setNotifyMsg] = useState("");
   const notifyRef = useRef<number | null>(null);
 
-  // WINNER
   const [winnerOpen, setWinnerOpen] = useState(false);
   const [iWon, setIWon] = useState(false);
 
-  // --------------------------------------------------
-  // NAME CONFIRM
-  // --------------------------------------------------
   const confirmName = () => {
     if (!tempName.trim()) return;
 
@@ -83,9 +65,6 @@ const Game = () => {
     localStorage.setItem("wr-room", room);
   };
 
-  // --------------------------------------------------
-  // MAIN SOCKET EFFECT
-  // --------------------------------------------------
   useEffect(() => {
     setMyId(socket.id);
 
@@ -95,21 +74,35 @@ const Game = () => {
     socket.emit("reconnectToRoom", { room, name: storedName });
     localStorage.setItem("wr-room", room);
 
-    // ------ SOCKET LISTENERS ------
     socket.on("playerNames", ({ self, opponent }) => {
       if (self) setMyName(self);
       if (opponent) setOpponentName(opponent);
     });
 
-    socket.on("joined", () => {
-      setLoadingState("joining");
-      setStatus("Opponent joining…");
+    socket.on("hostInfo", ({ hostId }) => {
+      setHostId(hostId);
     });
 
-    socket.on("playerJoined", ({ name }) => {
+    socket.on("joined", ({ started }) => {
+      setLoadingState("joining");
+      if (started) {
+        setGameStarted(true);
+        setStatus("Game started. Enter your secret.");
+      } else {
+        setStatus("Joining room…");
+      }
+    });
+
+    socket.on("playerJoined", ({ name, started }) => {
       if (name) setOpponentName(name);
       setLoadingState(null);
-      setStatus("Opponent joined. Waiting for host to start");
+
+      if (started) {
+        setGameStarted(true);
+        setStatus("Game started. Enter your secret.");
+      } else {
+        setStatus("Opponent joined. Waiting for host to start");
+      }
     });
 
     socket.on("gameStarted", () => {
@@ -182,9 +175,13 @@ const Game = () => {
       setStatus("Opponent left the room.");
     });
 
-    // CLEANUP
+    socket.on("errorMessage", (msg) => {
+      setStatus(msg);
+    });
+
     return () => {
       socket.off("playerNames");
+      socket.off("hostInfo");
       socket.off("joined");
       socket.off("playerJoined");
       socket.off("gameStarted");
@@ -201,9 +198,6 @@ const Game = () => {
     };
   }, [room, chatOpen]);
 
-  // --------------------------------------------------
-  // LOCK SECRET
-  // --------------------------------------------------
   const lockSecret = () => {
     if (!isValid(secret)) return;
 
@@ -217,9 +211,6 @@ const Game = () => {
     socket.emit("setSecret", { room, secret });
   };
 
-  // --------------------------------------------------
-  // GUESS
-  // --------------------------------------------------
   const [guess, setGuess] = useState("");
 
   const submitGuess = () => {
@@ -230,9 +221,6 @@ const Game = () => {
     setGuess("");
   };
 
-  // --------------------------------------------------
-  // CHAT
-  // --------------------------------------------------
   const openChatPanel = () => {
     setChatOpen(true);
     setUnreadCount(0);
@@ -246,9 +234,6 @@ const Game = () => {
     setChatInput("");
   };
 
-  // --------------------------------------------------
-  // COPY ROOM CODE
-  // --------------------------------------------------
   const copyRoom = async () => {
     await navigator.clipboard.writeText(room);
     setNotifyMsg("Room code copied");
@@ -256,19 +241,13 @@ const Game = () => {
     setTimeout(() => setNotifyOpen(false), 1200);
   };
 
-  // REMATCH
   const requestRematch = () => socket.emit("requestRematch", { room });
 
-  // --------------------------------------------------
-  // UI
-  // --------------------------------------------------
   return (
     <div className="min-h-screen p-4 pb-24 max-w-md mx-auto space-y-4 text-foreground">
 
-      {/* NOTIFICATION */}
       <NotificationBubble open={notifyOpen} message={notifyMsg} onClick={openChatPanel} />
 
-      {/* NAME PROMPT */}
       {askNameOpen && (
         <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50">
           <Card className="p-6 w-80 space-y-4 bg-card text-center">
@@ -279,12 +258,13 @@ const Game = () => {
               placeholder="Your name"
               className="text-center"
             />
-            <Button className="w-full" onClick={confirmName}>Continue</Button>
+            <Button className="w-full" onClick={confirmName}>
+              Continue
+            </Button>
           </Card>
         </div>
       )}
 
-      {/* HEADER */}
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold">White & Red</h1>
@@ -298,14 +278,27 @@ const Game = () => {
 
       <p className="text-center text-sm">{status}</p>
 
-      {/* SECRET ENTRY */}
+      {/* ⭐ HOST START GAME BUTTON */}
+      {myId === hostId && !gameStarted && opponentName !== "Opponent" && (
+        <Card className="p-4 text-center">
+          <Button
+            className="w-full"
+            onClick={() => socket.emit("startGame", { room })}
+          >
+            Start Game
+          </Button>
+        </Card>
+      )}
+
+      {/* ⭐ OPPONENT VIEW */}
+      {myId !== hostId && !gameStarted && (
+        <Card className="p-4 text-center">
+          <h2 className="text-lg font-medium">Waiting for host to start</h2>
+        </Card>
+      )}
+
       {!locked ? (
-        !gameStarted ? (
-          <Card className="p-4 text-center">
-            <h2 className="text-lg font-medium">Waiting for host</h2>
-            <p className="text-xs text-muted-foreground">Host must start the game</p>
-          </Card>
-        ) : (
+        gameStarted ? (
           <Card className="p-4 space-y-3">
             <h2 className="text-lg">Enter Secret Number</h2>
             <Input
@@ -318,12 +311,11 @@ const Game = () => {
               <Lock className="mr-2" /> Lock Secret
             </Button>
           </Card>
-        )
+        ) : null
       ) : (
         <Card className="p-4 text-center">Secret Locked</Card>
       )}
 
-      {/* GUESS AREA */}
       {locked && ready && (
         <Card className="p-4 space-y-3">
           <h2 className="text-lg">Make a Guess</h2>
@@ -340,11 +332,9 @@ const Game = () => {
         </Card>
       )}
 
-      {/* HISTORY SPLIT */}
       {history.length > 0 && (
         <div className="space-y-4">
 
-          {/* Your guesses */}
           <div>
             <h3 className="text-sm font-semibold text-accent">Your Guesses</h3>
             <div className="mt-2 space-y-2">
@@ -360,7 +350,6 @@ const Game = () => {
             </div>
           </div>
 
-          {/* Opponent guesses */}
           <div>
             <h3 className="text-sm font-semibold text-primary">{opponentName}'s Guesses</h3>
             <div className="mt-2 space-y-2">
@@ -378,7 +367,6 @@ const Game = () => {
         </div>
       )}
 
-      {/* CHAT FAB */}
       <button
         onClick={openChatPanel}
         className={`fixed bottom-6 right-5 z-40 h-14 w-14 bg-card rounded-full flex items-center justify-center shadow-xl ${
@@ -393,15 +381,16 @@ const Game = () => {
         )}
       </button>
 
-      {/* CHAT PANEL */}
       <Sheet open={chatOpen} onOpenChange={setChatOpen}>
-        <SheetContent side="bottom" className="h-[60vh] rounded-t-2xl px-4">
+        <SheetContent
+          side="bottom"
+          className="chat-sheet h-[60vh] rounded-t-2xl px-4"
+        >
           <SheetHeader>
             <SheetTitle className="text-center">Chat</SheetTitle>
           </SheetHeader>
 
           <div className="flex flex-col h-full pt-4">
-
             <div className="flex-1 overflow-y-auto space-y-2">
               {chat.map((m, i) => (
                 <div key={i} className={m.from === socket.id ? "text-right" : "text-left"}>
@@ -418,7 +407,14 @@ const Game = () => {
 
             <div className="flex gap-2 pb-2">
               <Input
+                className="ios-fix-input"
                 value={chatInput}
+                onFocus={() => {
+                  // iOS safe scroll-to-view
+                  setTimeout(() => {
+                    document.activeElement?.scrollIntoView({ behavior: "smooth", block: "center" });
+                  }, 200);
+                }}
                 onChange={(e) => {
                   setChatInput(e.target.value);
                   socket.emit("typing", { room, isTyping: true });
@@ -426,13 +422,13 @@ const Game = () => {
                 onBlur={() => socket.emit("typing", { room, isTyping: false })}
                 placeholder="Message..."
               />
+
               <Button onClick={sendChat}>Send</Button>
             </div>
           </div>
         </SheetContent>
       </Sheet>
 
-      {/* WINNER MODAL */}
       <WinnerModal
         isOpen={winnerOpen}
         isWinner={iWon}

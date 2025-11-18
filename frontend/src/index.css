@@ -75,6 +75,24 @@ All colors MUST be HSL.
   100% { opacity: 0; transform: translateY(-10px); }
 }
 
+/* iOS chat fixes */
+.ios-fix-input {
+  -webkit-user-select: text;
+  caret-color: white;
+  position: relative;
+  z-index: 99999;
+}
+
+@supports (-webkit-touch-callout: none) {
+  .chat-sheet {
+    height: 65vh !important;
+    max-height: 65vh !important;
+    overflow-y: scroll !important;
+    -webkit-overflow-scrolling: touch;
+  }
+}
+
+
 .animate-fade-bubble {
   animation: fadeBubble 1.5s ease forwards;
 }
